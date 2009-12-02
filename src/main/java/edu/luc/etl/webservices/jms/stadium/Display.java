@@ -87,7 +87,6 @@ public class Display implements MessageListener {
 				log.warn("unknown event: " + event);
 			}
 			message.acknowledge();
-			message.acknowledge();
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
