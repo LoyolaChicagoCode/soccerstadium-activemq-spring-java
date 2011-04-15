@@ -19,77 +19,77 @@ import org.springframework.jms.core.JmsTemplate;
 
 public class Display implements MessageListener {
 
-	private final Log log = LogFactory.getLog(Display.class);
+  private final Log log = LogFactory.getLog(Display.class);
 
-	private String id = "display";
+  private String id = "display";
 
-	private JmsTemplate template;
+  private JmsTemplate template;
 
-	private Destination destination;
+  private Destination destination;
 
-	private Connection connection;
+  private Connection connection;
 
-	private Session session;
+  private Session session;
 
-	private MessageConsumer consumer;
+  private MessageConsumer consumer;
 
-	public JmsTemplate getTemplate() {
-		return template;
-	}
+  public JmsTemplate getTemplate() {
+    return template;
+  }
 
-	public void setTemplate(JmsTemplate template) {
-		this.template = template;
-	}
+  public void setTemplate(JmsTemplate template) {
+    this.template = template;
+  }
 
-	public Destination getDestination() {
-		return destination;
-	}
+  public Destination getDestination() {
+    return destination;
+  }
 
-	public void setDestination(Destination destination) {
-		this.destination = destination;
-	}
+  public void setDestination(Destination destination) {
+    this.destination = destination;
+  }
 
-	public void start() throws JMSException {
-		String selector = "event = 'count'";
+  public void start() throws JMSException {
+    String selector = "event = 'count'";
 
-		ConnectionFactory connectionFactory = template.getConnectionFactory();
-		connection = connectionFactory.createConnection();
+    ConnectionFactory connectionFactory = template.getConnectionFactory();
+    connection = connectionFactory.createConnection();
 
-		synchronized (connection) {
-			if (connection.getClientID() == null) {
-				connection.setClientID(id);
-			}
-		}
+    synchronized (connection) {
+      if (connection.getClientID() == null) {
+        connection.setClientID(id);
+      }
+    }
 
-		connection.start();
+    connection.start();
 
-		session = connection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
-		consumer = session.createConsumer(destination, selector, false);
-		consumer.setMessageListener(this);
-	}
+    session = connection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
+    consumer = session.createConsumer(destination, selector, false);
+    consumer.setMessageListener(this);
+  }
 
-	public void stop() throws JMSException {
-		if (consumer != null)
-			consumer.close();
-		if (session != null)
-			session.close();
-		if (connection != null)
-			connection.close();
-	}
+  public void stop() throws JMSException {
+    if (consumer != null)
+      consumer.close();
+    if (session != null)
+      session.close();
+    if (connection != null)
+      connection.close();
+  }
 
-	public void onMessage(Message message) {
-		try {
-			final String event = message.getStringProperty(EVENT);
-			if (COUNT.equals(event)) {
-				final int value = message.getIntProperty(VALUE);
-				log.info("count = " + value);
-			} else {
-				log.warn("unknown event: " + event);
-			}
-			message.acknowledge();
-		} catch (JMSException e) {
-			e.printStackTrace();
-		}
-	}
+  public void onMessage(Message message) {
+    try {
+      final String event = message.getStringProperty(EVENT);
+      if (COUNT.equals(event)) {
+        final int value = message.getIntProperty(VALUE);
+        log.info("count = " + value);
+      } else {
+        log.warn("unknown event: " + event);
+      }
+      message.acknowledge();
+    } catch (JMSException e) {
+      e.printStackTrace();
+    }
+  }
 
 }

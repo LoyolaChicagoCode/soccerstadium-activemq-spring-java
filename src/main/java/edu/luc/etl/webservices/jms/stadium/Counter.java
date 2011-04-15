@@ -22,164 +22,132 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessageCreator;
 
-public class Counter implements MessageListener {
+public class Counter implements MessageListener, CounterListener {
 
-	private final Log log = LogFactory.getLog(Counter.class);
+  private final Log log = LogFactory.getLog(Counter.class);
 
-	private int value;
+  private final String id = "counter";
 
-	private int capacity;
+  private JmsTemplate template;
 
-	private final String id = "counter";
+  private JmsTemplate producerTemplate;
 
-	private JmsTemplate template;
+  private Destination destination;
 
-	private JmsTemplate producerTemplate;
+  private Connection connection;
 
-	private Destination destination;
+  private Session session;
 
-	private Connection connection;
+  private MessageConsumer consumer;
 
-	private Session session;
+  private CounterPOJO theCounter;
 
-	private MessageConsumer consumer;
+  public void setCounterPOJO(final CounterPOJO theCounter) {
+    this.theCounter = theCounter;
+    theCounter.setCounterListener(this);
+  }
 
-	public JmsTemplate getTemplate() {
-		return template;
-	}
+  public JmsTemplate getTemplate() {
+    return template;
+  }
 
-	public void setTemplate(final JmsTemplate template) {
-		this.template = template;
-	}
+  public void setTemplate(final JmsTemplate template) {
+    this.template = template;
+  }
 
-	public JmsTemplate getProducerTemplate() {
-		return producerTemplate;
-	}
+  public JmsTemplate getProducerTemplate() {
+    return producerTemplate;
+  }
 
-	public void setProducerTemplate(JmsTemplate producerTemplate) {
-		this.producerTemplate = producerTemplate;
-	}
+  public void setProducerTemplate(JmsTemplate producerTemplate) {
+    this.producerTemplate = producerTemplate;
+  }
 
-	public Destination getDestination() {
-		return destination;
-	}
+  public Destination getDestination() {
+    return destination;
+  }
 
-	public void setDestination(final Destination destination) {
-		this.destination = destination;
-	}
+  public void setDestination(final Destination destination) {
+    this.destination = destination;
+  }
 
-	public int getCapacity() {
-		return capacity;
-	}
+  public void sendCount(final int value) {
+    log.debug("sendCount: " + value);
+    producerTemplate.send(destination, new MessageCreator() {
+      public Message createMessage(Session session) throws JMSException {
+        final Message message = session.createMessage();
+        message.setStringProperty(EVENT, COUNT);
+        message.setIntProperty(VALUE, value);
+        return message;
+      }
+    });
+  }
 
-	public void setCapacity(int capacity) {
-		this.capacity = capacity;
-	}
+  public void sendFull() {
+    log.debug("received sendFull event from counter");
+    producerTemplate.send(destination, new MessageCreator() {
+      public Message createMessage(Session session) throws JMSException {
+        final Message message = session.createMessage();
+        message.setStringProperty(EVENT, FULL);
+        return message;
+      }
+    });
+  }
 
-	public int getValue() {
-		return value;
-	}
+  public void sendNotFull() {
+    log.debug("received sendNotFull event from counter");
+    producerTemplate.send(destination, new MessageCreator() {
+      public Message createMessage(Session session) throws JMSException {
+        final Message message = session.createMessage();
+        message.setStringProperty(EVENT, NOTFULL);
+        return message;
+      }
+    });
+  }
 
-	public void increment() {
-		if (value >= capacity) {
-			log.warn("attempted increment on full");
-		} else {
-			++ value;
-			log.info("count = " + value);
-			sendCount();
-			if (value == capacity) {
-				log.info("capacity has been reached");
-				sendFull();
-			}
-		}
-	}
+  public void start() throws JMSException {
+    final String selector = "event = 'increment' OR event = 'decrement'";
 
-	public void decrement() {
-		if (value <= 0) {
-			log.warn("attempted decrement on empty");
-		} else {
-			if (value == capacity) {
-				sendNotFull();
-			}
-			-- value;
-			log.info("count = " + value);
-			sendCount();
-		}
-	}
+    final ConnectionFactory connectionFactory = template.getConnectionFactory();
+    connection = connectionFactory.createConnection();
 
-	protected void sendCount() {
-        producerTemplate.send(destination, new MessageCreator() {
-            public Message createMessage(Session session) throws JMSException {
-                final Message message = session.createMessage();
-                message.setStringProperty(EVENT, COUNT);
-                message.setIntProperty(VALUE, getValue());
-                return message;
-            }
-        });
-	}
+    synchronized (connection) {
+      if (connection.getClientID() == null) {
+        connection.setClientID(id);
+      }
+    }
 
-	protected void sendFull() {
-        producerTemplate.send(destination, new MessageCreator() {
-            public Message createMessage(Session session) throws JMSException {
-                final Message message = session.createMessage();
-                message.setStringProperty(EVENT, FULL);
-                return message;
-            }
-        });
-	}
+    connection.start();
 
-	protected void sendNotFull() {
-        producerTemplate.send(destination, new MessageCreator() {
-            public Message createMessage(Session session) throws JMSException {
-                final Message message = session.createMessage();
-                message.setStringProperty(EVENT, NOTFULL);
-                return message;
-            }
-        });
-	}
+    session = connection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
+    consumer = session.createConsumer(destination, selector, false);
+    consumer.setMessageListener(this);
+  }
 
-	public void start() throws JMSException {
-		final String selector = "event = 'increment' OR event = 'decrement'";
+  public void stop() throws JMSException {
+    if (consumer != null)
+      consumer.close();
+    if (session != null)
+      session.close();
+    if (connection != null)
+      connection.close();
+  }
 
-		final ConnectionFactory connectionFactory = template.getConnectionFactory();
-		connection = connectionFactory.createConnection();
-
-		synchronized (connection) {
-			if (connection.getClientID() == null) {
-				connection.setClientID(id);
-			}
-		}
-
-		connection.start();
-
-		session = connection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
-		consumer = session.createConsumer(destination, selector, false);
-		consumer.setMessageListener(this);
-	}
-
-	public void stop() throws JMSException {
-		if (consumer != null)
-			consumer.close();
-		if (session != null)
-			session.close();
-		if (connection != null)
-			connection.close();
-	}
-
-	public void onMessage(final Message message) {
-		try {
-			final String event = message.getStringProperty(EVENT);
-			if (INCREMENT.equals(event)) {
-				increment();
-			} else if (DECREMENT.equals(event)) {
-				decrement();
-			} else {
-				log.warn("unknown event: " + event);
-			}
-			message.acknowledge();
-		} catch (final JMSException ex) {
-			ex.printStackTrace();
-		}
-	}
+  public void onMessage(final Message message) {
+    log.debug("received message: " + message);
+    try {
+      final String event = message.getStringProperty(EVENT);
+      if (INCREMENT.equals(event)) {
+        theCounter.increment();
+      } else if (DECREMENT.equals(event)) {
+        theCounter.decrement();
+      } else {
+        log.warn("unknown event: " + event);
+      }
+      message.acknowledge();
+    } catch (final JMSException ex) {
+      ex.printStackTrace();
+    }
+  }
 
 }

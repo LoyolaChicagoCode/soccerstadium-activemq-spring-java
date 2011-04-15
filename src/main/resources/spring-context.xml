@@ -30,11 +30,15 @@
 		<property name="destination" ref="destination" />
 	</bean>
 
+        <bean id="counterPOJO" class="edu.luc.etl.webservices.jms.stadium.CounterPOJO">
+                <property name="capacity" value="5" />
+        </bean>
+
 	<bean id="counter" class="edu.luc.etl.webservices.jms.stadium.Counter">
 		<property name="template" ref="consumerJmsTemplate" />
 		<property name="producerTemplate" ref="producerJmsTemplate" />
 		<property name="destination" ref="destination" />
-		<property name="capacity" value="5" />
+		<property name="counterPOJO" ref="counterPOJO" />
 	</bean>
 
 	<bean id="display" class="edu.luc.etl.webservices.jms.stadium.Display">
