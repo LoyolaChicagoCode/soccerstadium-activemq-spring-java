@@ -3,9 +3,9 @@ package edu.luc.etl.webservices.jms.stadium;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class CounterPOJO {
+public class CounterImpl implements ICounter {
 
-  private final Log log = LogFactory.getLog(CounterPOJO.class);
+  private final Log log = LogFactory.getLog(CounterImpl.class);
 
   private int value;
 

@@ -40,9 +40,9 @@ public class Counter implements MessageListener, CounterListener {
 
   private MessageConsumer consumer;
 
-  private CounterPOJO theCounter;
+  private CounterImpl theCounter;
 
-  public void setCounterPOJO(final CounterPOJO theCounter) {
+  public void setCounterImpl(final CounterImpl theCounter) {
     this.theCounter = theCounter;
     theCounter.setCounterListener(this);
   }
