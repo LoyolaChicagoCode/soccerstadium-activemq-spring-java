@@ -20,4 +20,4 @@ To install dependencies:
 
 To run:
 
-mvn exec:java -Dexec.mainClass="edu.luc.etl.webservices.jms.stadium.Main"
+mvn exec:java -Dexec.mainClass=edu.luc.etl.webservices.jms.stadium.Main
